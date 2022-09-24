@@ -89,6 +89,85 @@ For us, the one screen I wanted to use seems to work fine, and some others also 
 - I run this in Linux, and do see that possibly my system has some different font-sizes than the Windows browser version will have. So some texts might not align perfectly.
 - I have no knowledge about programming / developing IN oracle forms, so do not bother to aks me about that. I only got this webstart applet to run standalone.
 
+## Demo Run
+
+Screenshots:
+
+![Login Form](screenshot-login.png "Login Form")
+
+![Example Form](screenshot-example-form.png "Example Form")
+
+Command line command / log info:
+
+```
+[:thijs@fizzgig Downloads] $ ~/bin/java/jdk8/bin/java -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
+
+Sat Sep 24 17:37:53 CEST 2022: ---
+Sat Sep 24 17:37:53 CEST 2022: Oracle Forms - Standalone Applet Runner - created by Thijs Kaper - 24 Sept, 2022
+Sat Sep 24 17:37:53 CEST 2022: ---
+Sat Sep 24 17:37:53 CEST 2022: Java Version: 1.8.0_281
+Sat Sep 24 17:37:53 CEST 2022: ---
+Sat Sep 24 17:37:53 CEST 2022: Start Url: http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda
+Sat Sep 24 17:37:53 CEST 2022: Base Url:http://eforms-tst3.ecom.somewhere.nl:8888
+Sat Sep 24 17:37:53 CEST 2022: ---
+Sat Sep 24 17:37:53 CEST 2022: PLUGINSPAGE = https://java.com/en/download/index.jsp
+Sat Sep 24 17:37:53 CEST 2022: TYPE = application/x-java-applet
+Sat Sep 24 17:37:53 CEST 2022: java_codebase = http://eforms-tst3.ecom.somewhere.nl:8888/forms/java
+Sat Sep 24 17:37:53 CEST 2022: java_code = oracle.forms.engine.Main
+Sat Sep 24 17:37:53 CEST 2022: java_archive = hstall.jar,frmall.jar,jacob.jar,frmwebutil.jar
+Sat Sep 24 17:37:53 CEST 2022: WIDTH = 1024
+Sat Sep 24 17:37:53 CEST 2022: HEIGHT = 786
+Sat Sep 24 17:37:53 CEST 2022: HSPACE = 0
+Sat Sep 24 17:37:53 CEST 2022: VSPACE = 0
+Sat Sep 24 17:37:53 CEST 2022: NAME = forms_applet
+Sat Sep 24 17:37:53 CEST 2022: serverURL = http://eforms-tst3.ecom.somewhere.nl:8888/forms/lservlet?ifcfs=/forms/frmservlet?config=emda&ifsessid=WLS_FORMS.formsapp.278&acceptLanguage=null
+Sat Sep 24 17:37:53 CEST 2022: networkRetries = 0
+Sat Sep 24 17:37:53 CEST 2022: serverArgs = escapeParams=true module=emdaui000f.fmx userid=  debug=no host= port= obr=no record= tracegroup= log= term=/appl/tst/ise/oras/tecom001/tfrms001/config/FormsComponent/forms/server/XXXXX_fmrpcweb.res ssoProxyConnect=no
+Sat Sep 24 17:37:53 CEST 2022: separateFrame = true
+Sat Sep 24 17:37:53 CEST 2022: splashScreen = no
+Sat Sep 24 17:37:53 CEST 2022: lookAndFeel = Oracle
+Sat Sep 24 17:37:53 CEST 2022: colorScheme = blue
+Sat Sep 24 17:37:53 CEST 2022: logo = logo.gif
+Sat Sep 24 17:37:53 CEST 2022: imageBase = codebase
+Sat Sep 24 17:37:53 CEST 2022: EndUserMonitoringEnabled = false
+Sat Sep 24 17:37:53 CEST 2022: allowAlertClipboard = true
+Sat Sep 24 17:37:53 CEST 2022: disableValidateClipboard = false
+Sat Sep 24 17:37:53 CEST 2022: enableJavascriptEvent = true
+Sat Sep 24 17:37:53 CEST 2022: MAYSCRIPT = true
+Sat Sep 24 17:37:53 CEST 2022: digitSubstitution = context
+Sat Sep 24 17:37:53 CEST 2022: legacy_lifecycle = false
+Sat Sep 24 17:37:53 CEST 2022: JavaScriptBlocksHeartBeat = false
+Sat Sep 24 17:37:53 CEST 2022: highContrast = false
+Sat Sep 24 17:37:53 CEST 2022: guiMode = 0
+Sat Sep 24 17:37:53 CEST 2022: WebUtilLogging = off
+Sat Sep 24 17:37:53 CEST 2022: WebUtilLoggingDetail = normal
+Sat Sep 24 17:37:53 CEST 2022: WebUtilErrormode = Alert
+Sat Sep 24 17:37:53 CEST 2022: WebUtilDispatchMonitorInterval = 5
+Sat Sep 24 17:37:53 CEST 2022: WebUtilTrustInternal = true
+Sat Sep 24 17:37:53 CEST 2022: WebUtilMaxTransferSize = 16384
+Sat Sep 24 17:37:53 CEST 2022: applet_stop_timeout = 800
+Sat Sep 24 17:37:53 CEST 2022: java_documentbase = http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda
+Sat Sep 24 17:37:53 CEST 2022: > Property Override: separateFrame = false
+Sat Sep 24 17:37:53 CEST 2022: ---
+Sat Sep 24 17:37:53 CEST 2022: Download/Activate jar: http://eforms-tst3.ecom.somewhere.nl:8888/forms/java/hstall.jar
+Sat Sep 24 17:37:53 CEST 2022: Download/Activate jar: http://eforms-tst3.ecom.somewhere.nl:8888/forms/java/frmall.jar
+Sat Sep 24 17:37:53 CEST 2022: Download/Activate jar: http://eforms-tst3.ecom.somewhere.nl:8888/forms/java/jacob.jar
+Sat Sep 24 17:37:53 CEST 2022: Download/Activate jar: http://eforms-tst3.ecom.somewhere.nl:8888/forms/java/frmwebutil.jar
+Sat Sep 24 17:37:53 CEST 2022: ---
+Sat Sep 24 17:37:53 CEST 2022: Status: AppletAdapter constructed
+Sat Sep 24 17:37:53 CEST 2022: Status: Loading Applet oracle.forms.engine.Main
+Sat Sep 24 17:37:56 CEST 2022: Status: Applet oracle.forms.engine.Main loaded
+Forms Session ID is WLS_FORMS.formsapp.278
+The proxy host is null, and the proxy port is 0.
+Native HTTP implementation is being used for the connection.
+The connection mode is HTTP.
+Forms Applet version is 11.1.2.2
+Sat Sep 24 17:40:55 CEST 2022: ### EXIT ###
+
+[:thijs@fizzgig Downloads] $ 
+```
+
+
 ## Example HTML launch page
 
 Here an example content of the HTML page ("http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda") to start the Oracle Forms app
