@@ -20,19 +20,24 @@ You can override any of the applet start parameters if needed.
 
 Created by Thijs Kaper, September 24, 2022.
 
--------------------------------------------------------------------------------------------------------------------------
+---
+
 This code is heavily based on the code from the next url (it is a tweak on the original to fill in some
 blanks / "todos", and it adds reading of the html starter page, and I have done some code refactoring):
+
 http://www.java2s.com/Code/Java/Swing-JFC/AppletViewerasimpleAppletViewerprogram.htm
+
 See the AppletViewer class for the original copyright notice.
+
 Original Author:  Ian Darwin, https://www.darwinsys.com/
--------------------------------------------------------------------------------------------------------------------------
+
+---
 
 ## Download
 
 To use this tool you do not have to build it yourself, just download the jar file from the target folder in this repository:
 
-<a href="https://github.com/atkaper/oracle-forms-standalone-runner/target">https://github.com/atkaper/oracle-forms-standalone-runner/target</a>
+<a href="https://github.com/atkaper/oracle-forms-standalone-runner/raw/master/target/oracle-forms-runner-1.0.0-SNAPSHOT.jar">https://github.com/atkaper/oracle-forms-standalone-runner/raw/master/target/oracle-forms-runner-1.0.0-SNAPSHOT.jar</a>
 
 Alternatively, if you want to build this yourself, you can clone this whole git project, and build it using maven / java-8:
 
