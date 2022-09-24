@@ -2,6 +2,8 @@
 
 Warning: requirement - you need a __JAVA 8 JDK (or runtime)__ to (build and) start this thing!
 
+See also the blog page about how I created this code: https://www.kaper.com/java/oracle-forms-standalone-runner/
+
 At the office, we still use some old oracle-forms-11 applications. The "normal" users will run these from windows,
 in the Edge browser switched to old Internet-Explorer compatibility mode...
 You can not start Oracle Forms Applets in any other browser or operating system, as applets are no longer supported.
