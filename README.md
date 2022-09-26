@@ -22,6 +22,8 @@ You can override any of the applet start parameters if needed.
 
 Created by Thijs Kaper, September 24, 2022.
 
+p.s. This has been tested with success now on Linux, and on MacOS. See bottom of document for java versions
+to use if your java 8 does not work.
 ---
 
 This code is heavily based on the code from the next url (it is a tweak on the original to fill in some
@@ -51,7 +53,7 @@ Result is the target/oracle-forms-runner-1.0.0-SNAPSHOT.jar executable.
 
 ## Run
 
-You do need a local installation of java 8 (runtime or jdk).
+You do need a local installation of java 8 (runtime or jdk). See bottom of this document for version references, not all versions seem to work.
 
 Example start (replace the shown URL by your forms start url):
 
@@ -365,3 +367,57 @@ This will take a second or two...</P>
 </BODY>
 </HTML>
 ```
+
+## Java Runtime Version Reference
+
+I am running this on Linux Mint (20.3 Una, at the moment kernel 5.17.0-rc8+).
+The JVM version I use is this one:
+
+```
+java version "1.8.0_281"
+Java(TM) SE Runtime Environment (build 1.8.0_281-b09)
+Java HotSpot(TM) 64-Bit Server VM (build 25.281-b09, mixed mode)
+```
+
+Which does not really tell what brand java it is ;-) But it is the __Oracle__ one (Sorry for that, we have swicthed most of our stuff to non-oracle, due to license dangers). I did not try any other "brands" for java 8 yet on Linux for this.
+
+A colleague of mine has tested runnig this on MacOS (thanks Stuart!), and found out that not all java 8 runtimes do work.
+
+This one DOES work on MacOS:
+
+```
+openjdk version "1.8.0_302"
+OpenJDK Runtime Environment Corretto-8.302.08.1 (build 1.8.0_302-b08)
+OpenJDK 64-Bit Server VM Corretto-8.302.08.1 (build 25.302-b08, mixed mode)
+```
+
+And these two DID NOT work:
+
+```
+openjdk version "1.8.0_345"
+OpenJDK Runtime Environment (Temurin)(build 1.8.0_345-b01)
+OpenJDK 64-Bit Server VM (Temurin)(build 25.345-b01, mixed mode)
+
+openjdk version "1.8.0_345"
+OpenJDK Runtime Environment (Zulu 8.64.0.19-CA-macosx) (build 1.8.0_345-b01)
+OpenJDK 64-Bit Server VM (Zulu 8.64.0.19-CA-macosx) (build 25.345-b01, mixed mode)
+```
+
+These last two ended up ging a startup exception, indicating a missing runtime class:
+
+```
+Exception in thread "main" java.lang.NoClassDefFoundError: netscape/javascript/JSException
+    at java.lang.Class.forName0(Native Method)
+    at java.lang.Class.forName(Class.java:264)
+    at com.kaper.forms.AppletViewer.loadApplet(AppletViewer.java:155)
+    at com.kaper.forms.AppletViewer.<init>(AppletViewer.java:123)
+    at com.kaper.forms.OracleFormsRunner.main(OracleFormsRunner.java:96)
+Caused by: java.lang.ClassNotFoundException: netscape.javascript.JSException
+    at java.net.URLClassLoader.findClass(URLClassLoader.java:387)
+    at java.lang.ClassLoader.loadClass(ClassLoader.java:419)
+    at sun.misc.Launcher$AppClassLoader.loadClass(Launcher.java:352)
+    at java.lang.ClassLoader.loadClass(ClassLoader.java:352)
+    ... 5 more
+```
+
+If anyone has anny additions to the list of (java 8) versions which WILL or WILL-NOT work, let me know, and I'll add them here.
