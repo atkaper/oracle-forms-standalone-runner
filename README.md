@@ -423,4 +423,4 @@ Caused by: java.lang.ClassNotFoundException: netscape.javascript.JSException
     ... 5 more
 ```
 
-If anyone has anny additions to the list of (java 8) versions which WILL or WILL-NOT work, let me know, and I'll add them here.
+If anyone has any additions to the list of (java 8) versions which WILL or WILL-NOT work, let me know, and I'll add them here.
