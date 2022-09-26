@@ -385,6 +385,8 @@ A colleague of mine has tested runnig this on MacOS (thanks Stuart!), and found 
 
 This one DOES work on MacOS:
 
+https://newreleases.io/project/github/corretto/corretto-8/release/8.302.08.1
+
 ```
 openjdk version "1.8.0_302"
 OpenJDK Runtime Environment Corretto-8.302.08.1 (build 1.8.0_302-b08)
