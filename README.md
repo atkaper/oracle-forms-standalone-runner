@@ -482,3 +482,6 @@ Here's a partial screenshot of the new screen and font sizes on my machine. If y
 this does fit much better!
 
 ![Font Fixed](screenshot-font-fixed.png "Font Fixed")
+
+Note: if you downloaded the tool jar before, you will need to re-download it now to make use of the font fixes.
+I did not update the version nr in the jar, so the name is still the same.
