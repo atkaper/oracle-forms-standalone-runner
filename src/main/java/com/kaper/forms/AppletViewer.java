@@ -1,14 +1,9 @@
 package com.kaper.forms;
 
 import java.applet.Applet;
-import java.awt.AWTEvent;
 import java.awt.BorderLayout;
 import java.awt.Container;
 import java.awt.Dimension;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
-import java.awt.event.HierarchyEvent;
-import java.awt.event.HierarchyListener;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.util.Map;
@@ -102,13 +97,16 @@ public class AppletViewer {
                 System.exit(0);
             }
         });
+
+        // Show screen resolution. For oracle forms you can override it using -Doverride_clientDPI=... to scale the forms.
+        // For example, my resolution is 96, but if I override this to 120 it is a better (slightly bigger) size.
+        Logger.logInfo("Screen Resolution: " + mainFrame.getToolkit().getScreenResolution());
+
         Container contentPane = mainFrame.getContentPane();
         contentPane.setLayout(new BorderLayout());
 
-        // Instantiate the AppletAdapter which gives us
-        // AppletStub and AppletContext.
-        if (appletAdapter == null)
-            appletAdapter = new AppletAdapter(embedParameters, this);
+        // Instantiate the AppletAdapter which gives us AppletStub and AppletContext.
+        appletAdapter = new AppletAdapter(embedParameters, this);
 
         // The AppletAdapter also gives us showStatus.
         // Therefore, must add() it very early on, since the Applet's
@@ -120,9 +118,10 @@ public class AppletViewer {
         int width = embedParameters.containsKey("WIDTH") ? Integer.parseInt(embedParameters.get("WIDTH")) : WIDTH;
         int height = embedParameters.containsKey("HEIGHT") ? Integer.parseInt(embedParameters.get("HEIGHT")) : HEIGHT;
 
-        loadApplet(appName, width, height);
-        if (theApplet == null)
+        theApplet = loadApplet(appName, width, height);
+        if (theApplet == null) {
             return;
+        }
 
         // Now right away, tell the Applet how to find showStatus et al.
         theApplet.setStub(appletAdapter);
@@ -141,7 +140,7 @@ public class AppletViewer {
         theApplet.init();
         theApplet.start();
 
-        // re-check/draw contents (is needed in case we pass in jvm option: -Doverride_separateFrame=false)
+        // re-check/draw contents (is needed on my system in case we pass in jvm option: -Doverride_separateFrame=false)
         mainFrame.repaint();
         mainFrame.revalidate();
     }
@@ -149,18 +148,20 @@ public class AppletViewer {
     /**
      * Load the Applet into memory.
      */
-    void loadApplet(String appletName, int w, int h) {
+    private Applet loadApplet(String appletName, int w, int h) {
+        Applet applet;
         try {
             // Construct an instance (as if using no-argument constructor)
-            theApplet = (Applet) Class.forName(appletName).newInstance();
+            applet = (Applet) Class.forName(appletName).newInstance();
         } catch (ClassNotFoundException e) {
             showStatus("Applet subclass " + appletName + " did not load");
-            return;
+            return null;
         } catch (Exception e) {
             showStatus("Applet " + appletName + " did not instantiate");
-            return;
+            return null;
         }
-        theApplet.setSize(w, h);
+        applet.setSize(w, h);
+        return applet;
     }
 
     public void showStatus(String s) {

@@ -70,6 +70,18 @@ I have multiple JDK/JVM versions on my machine, make sure you use java 8! I for 
 
 Of course for you this will be different, depending on where you keep your java-8 program folder.
 
+Addition (see also bottom of document) - for my big monitor, and non-fitting Linux fonts, I use the next start parameters:
+
+```
+java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_clientDPI=120 -Doverride_downsizeFontPixels=3 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
+```
+
+And if you have a normal monitor, and only want to scale down the font by 1 pixel, use this:
+
+```
+java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_downsizeFontPixels=1 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
+```
+
 ## Applet Document/URL display
 
 If you let the applet open a document URL, it will try to use your system browser. If that does not work, you can pass in the command line command
@@ -93,6 +105,8 @@ On startup, you will see all parsed parameters, and you will also see your defin
 For us, the one screen I wanted to use seems to work fine, and some others also display fine. So just give it a try... ;-)
 - I run this in Linux, and do see that possibly my system has some different font-sizes than the Windows browser version will have. So some texts might not align perfectly.
 - I have no knowledge about programming / developing IN oracle forms, so do not bother to aks me about that. I only got this webstart applet to run standalone.
+
+Addition: the disclaimer about font-sizes can now be fixed by tweaking some startup parameters. See bottom of document.
 
 ## Demo Run
 
@@ -424,3 +438,47 @@ Caused by: java.lang.ClassNotFoundException: netscape.javascript.JSException
 ```
 
 If anyone has any additions to the list of (java 8) versions which WILL or WILL-NOT work, let me know, and I'll add them here.
+
+## Font Issues
+
+Attempts at adding the proper fonts to use (on Linux Mint):
+
+```
+sudo apt-get install ttf-mscorefonts-installer
+```
+
+Also tried installing this one: https://www.wfonts.com/font/dialog, as I did see in debug that this is one
+of the font names in use.
+
+This did not help... my fonts do not yet fit perfectly on screen.
+
+To get this fixed, I did some debugging on a running Oracle Forms App, decompiled some of their code,
+and found that Oracle Forms does have some system implemented to re-scale fonts. This however only
+works on SunOS, and some old Windows flavours. To make this work on my Linux system, I have implemented
+two classes to fix this. See FontMapping and FontTable. To activate the font scaling, you can add two
+startup override parameters:
+
+Example, just making the font 1 pixel smaller:
+
+```
+-Doverride_mapFonts=yes -Doverride_downsizeFontPixels=1
+```
+
+I also did find out that there is a parameter to override the auto-detecting of your screen resolution (DPI).
+My screen is 2560x1440 pixels, with DPI 96. This gives me a quite small Forms screen. To make it a bit bigger,
+I can start my Forms using the following options:
+
+Suitable for 2560x1440 monitor on Linux:
+
+```
+-Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_clientDPI=120 -Doverride_downsizeFontPixels=3
+```
+
+You can play around with the ```clientDPI``` and ```downsizeFontPixels``` values until the screen looks OK to you.
+Note: during startup, the tool wil log a line like this: ```Screen Resolution: 96``` to show the
+default screen DPI. This will give you some idea of how to tweak it to a suitable value.
+
+Here's a partial screenshot of the new screen and font sizes on my machine. If you compare this to the screenshots above,
+this does fit much better!
+
+![Font Fixed](screenshot-font-fixed.png "Font Fixed")

@@ -27,7 +27,7 @@ import javax.swing.ImageIcon;
  * <p>
  * Original Author:  Ian Darwin, https://www.darwinsys.com/, for Learning Tree Course 478
  */
-class AppletAdapter extends Panel implements AppletStub, AppletContext {
+public class AppletAdapter extends Panel implements AppletStub, AppletContext {
 
     /**
      * A link back to the "parent" AppletViewer.
@@ -49,14 +49,14 @@ class AppletAdapter extends Panel implements AppletStub, AppletContext {
      * We did add the java_documentbase ourselves (set to start url), and we prefixed a base-url to java_codebase and serverURL.
      * The rest is taken 1-on-1 from the HTML page.
      */
-    private final Map<String, String> embedParameters;
+    public static Map<String, String> appletParameters;
 
     /**
      * Construct the GUI for an Applet Status window.
      */
-    public AppletAdapter(Map<String, String> embedParameters, AppletViewer appletViewer) {
+    public AppletAdapter(Map<String, String> appletParameters, AppletViewer appletViewer) {
         this.appletViewer = appletViewer;
-        this.embedParameters = embedParameters;
+        AppletAdapter.appletParameters = appletParameters;
 
         // Must do this very early on, since the Applet's
         // Constructor or its init() may use showStatus()
@@ -78,14 +78,6 @@ class AppletAdapter extends Panel implements AppletStub, AppletContext {
     public void appletResize(int w, int h) {
         // applet.setSize(w, h);
         Logger.logInfo("NOT-YET-IMPLEMENTED: appletResize: " + w + "/" + h);
-        if (appletViewer.mainFrame.getWidth() != w || appletViewer.mainFrame.getHeight() != h) {
-            Logger.logInfo("set mainFrame size");
-            appletViewer.mainFrame.setSize(w, h);
-        }
-        if (appletViewer.theApplet.getWidth() != w || appletViewer.theApplet.getHeight() != h) {
-            Logger.logInfo("set applet size");
-            appletViewer.theApplet.setSize(w, h);
-        }
     }
 
     /**
@@ -135,7 +127,7 @@ class AppletAdapter extends Panel implements AppletStub, AppletContext {
      */
     @Override
     public String getParameter(String name) {
-        String value = embedParameters.get(name);
+        String value = appletParameters.get(name);
         return value != null ? value.trim() : null;
     }
 

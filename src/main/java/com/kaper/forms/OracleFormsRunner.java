@@ -95,11 +95,10 @@ public class OracleFormsRunner {
         // Go start the applet... (using our wrapper system)
         AppletViewer viewer = new AppletViewer(parameters.get("java_code"), parameters);
 
-
         // Ok, this is an ugly hack, but no clue how to do this nicely.
         // Here we monitor every second if the Applet still has any components showing...
         // If not, then we assume the user wants to close the application.
-        while(true) {
+        while (true) {
             Thread.sleep(1000);
             if (viewer.theApplet.getComponentCount() == 0) {
                 Logger.logInfo("### EXIT ###");
@@ -174,7 +173,7 @@ public class OracleFormsRunner {
         parameters.forEach((s, s2) -> Logger.logInfo(s + " = " + s2));
 
         // Add some overrides, if any passed in. You can do that using one or more jvm options: -Doverride_KEY=VALUE
-        for(String name: System.getProperties().stringPropertyNames()) {
+        for (String name : System.getProperties().stringPropertyNames()) {
             if (name.startsWith("override_")) {
                 String key = name.replaceFirst("^override_", "");
                 String value = System.getProperty(name).trim();
