@@ -485,3 +485,5 @@ this does fit much better!
 
 Note: if you downloaded the tool jar before, you will need to re-download it now to make use of the font fixes.
 I did not update the version nr in the jar, so the name is still the same.
+
+Warning: the new setting ```downsizeFontPixels``` will probably NOT work on Windows.
