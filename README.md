@@ -1,6 +1,15 @@
 # Oracle Forms Standalone Runner
 
+---
+
 Warning: requirement - you need a __JAVA 8 JDK (or runtime)__ to (build and) start this thing!
+
+Warning: I have found out that this launcher does NOT YET work with our LOAD-BALANCED production servers!
+I can use it fine with all dev/tst/acc instances, as they are not using loadbalancers. I will definitely
+look into fixing this issue (probably has to do with sticky session cookies which are not returned at the
+moment).
+
+---
 
 See also the blog page about how I created this code: https://www.kaper.com/java/oracle-forms-standalone-runner/
 
