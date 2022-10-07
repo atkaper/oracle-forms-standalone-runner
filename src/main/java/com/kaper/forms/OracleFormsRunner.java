@@ -1,37 +1,47 @@
 package com.kaper.forms;
 
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Random;
 import java.util.Scanner;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import org.apache.commons.text.StringEscapeUtils;
 
 /**
+ * <pre>
  * -------------------------------------------------------------------------------------------------------------------------
  * Oracle Forms 11 Applet Runner.
  * -------------------------------------------------------------------------------------------------------------------------
- * <p>
+ *
  * Warning: requirement - you need a JAVA 8 JDK (or runtime) to (build and) start this thing!
- * <p>
+ *
  * At the office, we still use some old oracle-forms-11 applications. The "normal" users will run these from windows,
  * in the Edge browser switched to old Internet-Explorer compatibility mode...
  * As I do run a Linux machine, I do not have Edge, and needed something else to run the Oracle-Forms applications.
- * <p>
+ *
  * This application will read the html page from the URL as passed in on the command line, find the latest applet in there,
  * and will try to start it. It does read the parameters from the applet definition, and changes some of them to simulate
  * as if we were started from a browser on the given URL.
  * The code will also download the listed applet JAR files (in memory) to be able to start the applet.
- * <p>
+ *
  * Example start:
  * java -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
- * <p>
+ *
  * Created by Thijs Kaper, September 24, 2022.
- * <p>
+ *
+ * -------------------------------------------------------------------------------------------------------------------------
+ *
+ * Additions:
+ * - You can now pass in parameters to change screen scale (DPI), and alter font-sizes (for the Oracle Forms version WE use).
+ * - A Cookie-Retaining-Proxy has been added, to allow the launcher to be used for load-balanced server setups.
+ * See https://github.com/atkaper/oracle-forms-standalone-runner for more information.
+ *
+ * Thijs, October 2022.
+ *
  * -------------------------------------------------------------------------------------------------------------------------
  * This code is heavily based on the code from the next url (it is like a minor tweak on the original to fill in some
  * blanks / "todos", and it adds reading of the html starter page, and I have done some code refactoring):
@@ -39,16 +49,19 @@ import org.apache.commons.text.StringEscapeUtils;
  * See the AppletViewer class for the original copyright notice.
  * Original Author:  Ian Darwin, https://www.darwinsys.com/, for Learning Tree Course 478
  * -------------------------------------------------------------------------------------------------------------------------
+ * </pre>
  */
 
 public class OracleFormsRunner {
+    /** Reference to our cookie retaining proxy. */
+    private static HttpCookieProxy httpCookieProxy = null;
 
     /**
      * Download starter page, parse its parameters, construct the GUI, load the Applet, start it running.
      */
     public static void main(String[] args) throws Exception {
         Logger.logInfo("---");
-        Logger.logInfo("Oracle Forms - Standalone Applet Runner - created by Thijs Kaper - 24 Sept, 2022");
+        Logger.logInfo("Oracle Forms - Standalone Applet Runner - created by Thijs Kaper - 24 Sept, 2022 / 7 Oct, 2022");
         Logger.logInfo("---");
         String javaVersion = System.getProperty("java.version");
         Logger.logInfo("Java Version: " + javaVersion);
@@ -59,22 +72,59 @@ public class OracleFormsRunner {
         Logger.logInfo("---");
 
         // check for start argument url
-        if (args.length != 1) {
-            Logger.logInfo("Please pass the start URL as parameter");
-            Logger.logInfo("Example: java -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \"http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda\"");
+        if (args.length != 1 && args.length != 2) {
+            Logger.logInfo("Please pass the start URL as parameter, and optionally pass in a second parameter for choosing a local proxy port (0-65535).");
+            Logger.logInfo("Examples:");
+            Logger.logInfo("  # 'normal' start:");
+            Logger.logInfo(
+                    "  java -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \"http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda\"");
+            Logger.logInfo("  # 'normal' start, and pass in a fixed local proxy port number (2306):");
+            Logger.logInfo(
+                    "  java -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \"http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda\" 2306");
+            Logger.logInfo("  # start for 'big' monitor, and using font-size corrections:");
+            Logger.logInfo(
+                    "  java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_clientDPI=120 -Doverride_downsizeFontPixels=3 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \"http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda\"");
+            Logger.logInfo("  # start for 'big' monitor, and using font-size corrections, and pass in a fixed local proxy port number (2306):");
+            Logger.logInfo(
+                    "  java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_clientDPI=120 -Doverride_downsizeFontPixels=3 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \"http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda\" 2306");
+            Logger.logInfo("You can disable the cookie retaining proxy by passing in port number 0. Do not specify a number to use a random port in range 50000-59999.");
+            Logger.logInfo("See documentation for more information: https://github.com/atkaper/oracle-forms-standalone-runner");
+            Logger.logInfo("Created by Thijs Kaper, September/October, 2022.");
             return;
         }
 
+        // Pick a random local port to start our cookie retaining proxy on.
+        // Random to allow users to start more than one forms application.
+        int localProxyPort = new Random().nextInt(10000) + 50000;
+        if (args.length >= 2) {
+            localProxyPort = Integer.parseInt(args[1]);
+            // Hidden feature; use port 4242 to enable debug logging ;-)
+            Logger.setDebugEnabled(localProxyPort == 4242);
+        }
+        // If proxy not disabled, start it, and put it between the applet and the server
+        // Note: we use this proxy to retain any cookies going between server and applet, as native applet code does not do that.
+        String appletRunUrl = args[0];
+        if (localProxyPort > 0 && localProxyPort < 65535) {
+            // start proxy to given target
+            httpCookieProxy = new HttpCookieProxy(appletRunUrl, localProxyPort);
+            // change protocol/host/port to proxy address
+            appletRunUrl = "http://127.0.0.1:" + localProxyPort + "/" + appletRunUrl.replaceFirst("https?://[^/]+/(.*)", "$1");
+        } else {
+            Logger.logInfo("Warning: no Cookie-Retaining-Proxy started - this might give issues for load-balanced servers");
+        }
+
         // read html document on given start URL, it will contain the oracle forms applet start code and parameters
-        Map<String, String> parameters = loadAppletPropertiesFromHtmlLaunchPage(args[0]);
+        Map<String, String> parameters = loadAppletPropertiesFromHtmlLaunchPage(appletRunUrl);
         if (parameters == null || parameters.isEmpty()) {
             Logger.logInfo("No start parameters in the html page?");
+            stopRunning();
             return;
         }
 
         // check that we know what code to download
         if (!parameters.containsKey("java_archive")) {
             Logger.logInfo("Missing java_archive attribute in last <embed ..> tag, no clue what jars to download - giving up");
+            stopRunning();
             return;
         }
 
@@ -89,6 +139,7 @@ public class OracleFormsRunner {
         // check if we know WHAT APPLET class to start
         if (!parameters.containsKey("java_code")) {
             Logger.logInfo("Missing java_code attribute in last <embed ..> tag");
+            stopRunning();
             return;
         }
         Logger.logInfo("---");
@@ -98,16 +149,27 @@ public class OracleFormsRunner {
         // Ok, this is an ugly hack, but no clue how to do this nicely.
         // Here we monitor every second if the Applet still has any components showing...
         // If not, then we assume the user wants to close the application.
-        while (true) {
+        while (viewer.mainFrame.isVisible()) {
             Thread.sleep(1000);
             if (viewer.theApplet.getComponentCount() == 0) {
-                Logger.logInfo("### EXIT ###");
-                viewer.mainFrame.setVisible(false);
-                viewer.mainFrame.dispose();
-                viewer.theApplet.destroy();
-                System.exit(0);
+                break;
             }
         }
+
+        // Terminate all running things
+        viewer.mainFrame.setVisible(false);
+        viewer.mainFrame.dispose();
+        viewer.theApplet.destroy();
+        stopRunning();
+    }
+
+    private static void stopRunning() {
+        if (httpCookieProxy != null) {
+            httpCookieProxy.terminateProxy();
+            httpCookieProxy.waitForProxyThreadToStop();
+        }
+        Logger.logInfo("### EXIT ###");
+        System.exit(0);
     }
 
     /**
@@ -125,7 +187,7 @@ public class OracleFormsRunner {
         String htmlFromUrl;
         try {
             htmlFromUrl = new Scanner(new URL(url).openStream(), "UTF-8").useDelimiter("\\A").next();
-        } catch (IOException e) {
+        } catch (Exception e) {
             Logger.logInfo("Error loading URL? " + e.getMessage());
             e.printStackTrace();
             return null;

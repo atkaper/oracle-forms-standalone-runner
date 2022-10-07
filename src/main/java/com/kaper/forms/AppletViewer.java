@@ -90,11 +90,8 @@ public class AppletViewer {
         mainFrame = new JFrame("OracleFormsRunner / AppletViewer");
         mainFrame.addWindowListener(new WindowAdapter() {
             public void windowClosing(WindowEvent e) {
-                Logger.logInfo("### EXIT ###");
+                // hide window, and let runner main close all.
                 mainFrame.setVisible(false);
-                mainFrame.dispose();
-                theApplet.destroy();
-                System.exit(0);
             }
         });
 

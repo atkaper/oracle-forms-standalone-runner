@@ -4,11 +4,6 @@
 
 Warning: requirement - you need a __JAVA 8 JDK (or runtime)__ to (build and) start this thing!
 
-Warning: I have found out that this launcher does NOT YET work with our LOAD-BALANCED production servers!
-I can use it fine with all dev/tst/acc instances, as they are not using loadbalancers. I will definitely
-look into fixing this issue (probably has to do with sticky session cookies which are not returned at the
-moment).
-
 ---
 
 See also the blog page about how I created this code: https://www.kaper.com/java/oracle-forms-standalone-runner/
@@ -20,6 +15,7 @@ You can not start Oracle Forms Applets in any other browser or operating system,
 __As I do run a Linux machine, I do not have Edge, and needed something else to run the Oracle-Forms applications__.
 
 __This standalone application will:__
+- start a proxy to run between applet and server to handle cookies,
 - read the html page from the URL as passed in on the command line,
 - find the last applet tag in there,
 - and will try to start it.
@@ -29,7 +25,8 @@ as if we were started from a browser on the given URL.
 The code will also download the listed applet JAR files (in memory) to be able to start the applet.
 You can override any of the applet start parameters if needed.
 
-Created by Thijs Kaper, September 24, 2022.
+Created by Thijs Kaper, September 24, 2022,
+added Cookie-Retaining-Proxy October 7, 2022.
 
 p.s. This has been tested with success now on Linux, and on MacOS. See bottom of document for java versions
 to use if your java 8 does not work.
@@ -91,6 +88,36 @@ And if you have a normal monitor, and only want to scale down the font by 1 pixe
 java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_downsizeFontPixels=1 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
 ```
 
+## Load Balanced Servers / Cookie Handling
+
+A special proxy will be started when you start the launcher, and will be put between the applet and the server.
+The system will pick a random local port number between 50000 and 59999, or you can choose a port number yourself
+by adding it as second program argument behind the Forms start url. The reason for running this proxy, is to monitor all cookies
+which go from and to the server, and it will remember the cookies and add them to each following request. We need this, because
+the native network code in the Oracle Forms Applet is not handling cookies. It probably assumes that the browser in which the applet
+normally is embedded will handle the cookies. We need the cookies on server setups where a loadbalancer is used, which will set
+a cookie to determine which backend server instance you are using, and which you should keep using for your session.
+
+Example, to use fixed port number 2306 to run the Cookie-Retaining-Proxy on:
+
+```
+java -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda" 2306
+```
+
+You should normally never need to add this extra fixed port number, but I added the option just in case you have some nasty
+firewall thing which would block use of the tool (think SELinux). Using a known port number would allow you to add an exemption to the firewall for this.
+
+Additionally, if you pass in port number 0 (zero), then the proxy will not be started and NOT be put between the applet and server. 
+Using port number 4242 (a nice magic number) will enable http debug logging in the proxy.
+
+If you try to start Oracle Forms on a load-balanced environment, without the cookie proxy, you get the next start error:
+
+![Missing LB Cookies Error](screenshot-loadbalancing-error.png "Missing LB Cookies Error")
+
+_"FRM-93618: Fatale fout bij lezen gegevens van runtimeproces. Neem contact op met de systeembeheerder."_
+
+_"FRM-93618: fatal error reading data from runtime process. Contact your system administrator."_
+
 ## Applet Document/URL display
 
 If you let the applet open a document URL, it will try to use your system browser. If that does not work, you can pass in the command line command
@@ -108,14 +135,36 @@ You can specify as many of these as you need.
 
 On startup, you will see all parsed parameters, and you will also see your defined overrides.
 
+The above shown override parameters summarized:
+
+- ```-Doverride_separateFrame=false``` open applet in same frame as the launcher (true or not using this will open in new window).
+- ```-Doverride_browser=firefox``` use firefox for opening document links (change firefox to any command line command to start a browser, leave unset to try system using default).
+- ```-Doverride_mapFonts=yes``` enable font size overrides.
+- ```-Doverride_downsizeFontPixels=3``` make fonts smaller by 3 pixels (change the 3 to any value you want - probably won't work on Windows).
+- ```-Doverride_clientDPI=120``` override the automatic screen DPI detection. This resizes the applet. 
+
+If you add this option: ```-DdebugGetParameter=true```, the launcher will log ALL parameter reads it does.
+There are many more than there are configured. You can decompile the applet jar's (not the launcher, but the ones which get
+downloaded) if you are interested in what they are used for.
+
+Some interesting ones I found:
+
+- ```-Doverride_background="https://www.kaper.com/wp-content/uploads/2022/10/blue-backdrop.jpg"``` change background image. __Nice one ;-)__
+- ```-Doverride_webformsTitle="Emda T3"``` change the window title to something of your liking. Unfortunately only displays on our login screen.
+- ```-Doverride_colorScheme=red``` changes some colors, not many. Allowed values: Teal, Titanium, Red, Khaki, Blue, Olive, Purple, BLAF, Swan.
+
+Demo of the custom background image:
+
+![Custom Background](screenshot-custom-background.png "Custom Background")
+
 ## Disclaimers
 
 - I have no clue if this code works for ALL oracle forms functions, so if something does not work, let me know.
 For us, the one screen I wanted to use seems to work fine, and some others also display fine. So just give it a try... ;-)
-- I run this in Linux, and do see that possibly my system has some different font-sizes than the Windows browser version will have. So some texts might not align perfectly.
+- ~~I run this in Linux, and do see that possibly my system has some different font-sizes than the Windows browser version will have. So some texts might not align perfectly.~~
 - I have no knowledge about programming / developing IN oracle forms, so do not bother to aks me about that. I only got this webstart applet to run standalone.
 
-Addition: the disclaimer about font-sizes can now be fixed by tweaking some startup parameters. See bottom of document.
+Addition: the disclaimer about font-sizes can now be fixed by tweaking some startup parameters.
 
 ## Demo Run
 
@@ -450,6 +499,8 @@ If anyone has any additions to the list of (java 8) versions which WILL or WILL-
 
 ## Font Issues
 
+__[Fixed!]__
+
 Attempts at adding the proper fonts to use (on Linux Mint):
 
 ```
@@ -459,10 +510,10 @@ sudo apt-get install ttf-mscorefonts-installer
 Also tried installing this one: https://www.wfonts.com/font/dialog, as I did see in debug that this is one
 of the font names in use.
 
-This did not help... my fonts do not yet fit perfectly on screen.
+This did not help... my fonts ~~do~~ did not fit perfectly on screen.
 
-To get this fixed, I did some debugging on a running Oracle Forms App, decompiled some of their code,
-and found that Oracle Forms does have some system implemented to re-scale fonts. This however only
+To get this fixed, I executed some debugging on a running Oracle Forms App, decompiled some of their code,
+and found that Oracle Forms does have a system implemented to re-scale fonts. This however only
 works on SunOS, and some old Windows flavours. To make this work on my Linux system, I have implemented
 two classes to fix this. See FontMapping and FontTable. To activate the font scaling, you can add two
 startup override parameters:

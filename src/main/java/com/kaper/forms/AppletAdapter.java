@@ -128,6 +128,9 @@ public class AppletAdapter extends Panel implements AppletStub, AppletContext {
     @Override
     public String getParameter(String name) {
         String value = appletParameters.get(name);
+        if ("true".equalsIgnoreCase(System.getProperty("debugGetParameter"))) {
+            Logger.logInfo("getParameter: " + name + ", value: " + value);
+        }
         return value != null ? value.trim() : null;
     }
 
