@@ -65,7 +65,9 @@ You do need a local installation of java 8 (runtime or jdk). See bottom of this 
 Example start (replace the shown URL by your forms start url):
 
 ```
-java -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
+java -Doverride_separateFrame=false \
+  -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \
+  "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
 ```
 
 I have multiple JDK/JVM versions on my machine, make sure you use java 8! I for example type this, instead of just "java", to make sure I use the java 8 version:
@@ -79,13 +81,22 @@ Of course for you this will be different, depending on where you keep your java-
 Addition (see also bottom of document) - for my big monitor, and non-fitting Linux fonts, I use the next start parameters:
 
 ```
-java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_clientDPI=120 -Doverride_downsizeFontPixels=3 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
+java -Doverride_separateFrame=false \
+  -Doverride_mapFonts=yes \
+  -Doverride_clientDPI=120 \
+  -Doverride_downsizeFontPixels=3 \
+  -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \
+  "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
 ```
 
 And if you have a normal monitor, and only want to scale down the font by 1 pixel, use this:
 
 ```
-java -Doverride_separateFrame=false -Doverride_mapFonts=yes -Doverride_downsizeFontPixels=1 -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
+java -Doverride_separateFrame=false \
+  -Doverride_mapFonts=yes \
+  -Doverride_downsizeFontPixels=1 \
+  -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \
+  "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
 ```
 
 ## Load Balanced Servers / Cookie Handling
@@ -101,14 +112,17 @@ a cookie to determine which backend server instance you are using, and which you
 Example, to use fixed port number 2306 to run the Cookie-Retaining-Proxy on:
 
 ```
-java -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda" 2306
+java -Doverride_separateFrame=false \
+  -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar 
+  "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda" \
+  2306
 ```
 
 You should normally never need to add this extra fixed port number, but I added the option just in case you have some nasty
 firewall thing which would block use of the tool (think SELinux). Using a known port number would allow you to add an exemption to the firewall for this.
 
-Additionally, if you pass in port number 0 (zero), then the proxy will not be started and NOT be put between the applet and server. 
-Using port number 4242 (a nice magic number) will enable http debug logging in the proxy.
+Additionally, if you pass in port number ```0``` (zero), then the proxy will not be started and NOT be put between the applet and server. 
+Using port number ```4242``` (a nice magic number) will enable http debug logging in the proxy.
 
 If you try to start Oracle Forms on a load-balanced environment, without the cookie proxy, you get the next start error:
 
@@ -124,7 +138,10 @@ If you let the applet open a document URL, it will try to use your system browse
 needed to open the proper browser as extra ```-Doverride_browser=...``` option. For example to use "firefox", try the next command line:
 
 ```
-java -Doverride_browser=firefox -Doverride_separateFrame=false -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda
+java -Doverride_browser=firefox \
+  -Doverride_separateFrame=false \
+  -jar oracle-forms-runner-1.0.0-SNAPSHOT.jar \
+  "http://eforms-tst3.ecom.somewhere.nl:8888/forms/frmservlet?config=emda"
 ```
 
 ## Override Start Parameters
@@ -151,7 +168,7 @@ Some interesting ones I found:
 
 - ```-Doverride_background="https://www.kaper.com/wp-content/uploads/2022/10/blue-backdrop.jpg"``` change background image. __Nice one ;-)__
 - ```-Doverride_webformsTitle="Emda T3"``` change the window title to something of your liking. Unfortunately only displays on our login screen.
-- ```-Doverride_colorScheme=red``` changes some colors, not many. Allowed values: Teal, Titanium, Red, Khaki, Blue, Olive, Purple, BLAF, Swan.
+- ```-Doverride_colorScheme=red``` changes some colors, not many (in our screens). Allowed values: Teal, Titanium, Red, Khaki, Blue, Olive, Purple, BLAF, Swan.
 
 Demo of the custom background image:
 
