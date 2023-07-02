@@ -3,7 +3,9 @@ package com.kaper.forms;
 import java.lang.reflect.Method;
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Scanner;
@@ -41,6 +43,22 @@ import org.apache.commons.text.StringEscapeUtils;
  * See https://github.com/atkaper/oracle-forms-standalone-runner for more information.
  *
  * Thijs, October 2022.
+ *
+ * -------------------------------------------------------------------------------------------------------------------------
+ *
+ * Addition (feature request from Bogdan):
+ * - You can now pass in parameters to override some server target files (when proxy is enabled).
+ *   This can for example be used to return a local (altered) copy of the oracle forms Registry.dat property file.
+ *
+ * To activate this option, add one or more system properties like this: "-Dlocalfile_*=...",
+ * where the * can be replaced by anything unique (numbers).
+ * Value is in format:  PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE where PATHREGEX is a regex pattern to match
+ * the original target path, and LOCALFILE is a local file path for the file to use, and the optional CONTENTTYPE is the
+ * content-type to return for the file.
+ * Example: -Dlocalfile_1=".*Registry.dat:MyRegistry.dat:text/plain"
+ * The PATHREGEX source match is done against the original requested URL path (excluding a possible query string).
+ *
+ * Thijs, July 2023.
  *
  * -------------------------------------------------------------------------------------------------------------------------
  * This code is heavily based on the code from the next url (it is like a minor tweak on the original to fill in some
@@ -105,8 +123,15 @@ public class OracleFormsRunner {
         // Note: we use this proxy to retain any cookies going between server and applet, as native applet code does not do that.
         String appletRunUrl = args[0];
         if (localProxyPort > 0 && localProxyPort < 65535) {
+            List<String> localProxyFiles = new ArrayList<>();
+            for (String name : System.getProperties().stringPropertyNames()) {
+                if (name.startsWith("localfile_")) {
+                    String value = System.getProperty(name).trim();
+                    localProxyFiles.add(value);
+                }
+            }
             // start proxy to given target
-            httpCookieProxy = new HttpCookieProxy(appletRunUrl, localProxyPort);
+            httpCookieProxy = new HttpCookieProxy(appletRunUrl, localProxyPort, localProxyFiles);
             // change protocol/host/port to proxy address
             appletRunUrl = "http://127.0.0.1:" + localProxyPort + "/" + appletRunUrl.replaceFirst("https?://[^/]+/(.*)", "$1");
         } else {

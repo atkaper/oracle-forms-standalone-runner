@@ -1,5 +1,8 @@
 # Oracle Forms Standalone Runner
 
+You can use this code to run both Oracle 11 and Oracle 12 forms applications.
+It has been tested this on the following versions: 11.1.2.1, 11.1.2.2, 12.2.1.3, and 12.2.1.4.
+
 ---
 
 Warning: requirement - you need a __JAVA 8 JDK (or runtime)__ to (build and) start this thing!
@@ -25,8 +28,8 @@ as if we were started from a browser on the given URL.
 The code will also download the listed applet JAR files (in memory) to be able to start the applet.
 You can override any of the applet start parameters if needed.
 
-Created by Thijs Kaper, September 24, 2022,
-added Cookie-Retaining-Proxy October 7, 2022.
+Created by Thijs Kaper, September 24, 2022, added Cookie-Retaining-Proxy October 7, 2022.
+Added server file override function to the embedded proxy July 2, 2023 (as feature request for Bogdan).
 
 p.s. This has been tested with success now on Linux, and on MacOS. See bottom of document for java versions
 to use if your java 8 does not work.
@@ -173,6 +176,54 @@ Some interesting ones I found:
 Demo of the custom background image:
 
 ![Custom Background](screenshot-custom-background.png "Custom Background")
+
+## Override Server Files
+
+If the embedded proxy is enabled, you can add configuration parameters to override certain server target URL's to return local
+files instead of the ones requested from the server. You can use this to make a local customized Registry.dat property file.
+In Oracle 12 you can specify custom color profiles in this file. Oracle 11 apps might not support custom color profiles, but
+other settings can be added if needed anyway.
+
+To activate this override option, add one or more system properties like this: "-Dlocalfile_*=...",
+where the * can be replaced by anything unique (numbers or texts).
+Value is in format:  PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE where PATHREGEX is a regex pattern to match
+the original target path, and LOCALFILE is a local file path for the file to use, and the optional CONTENTTYPE is the
+content-type to return for the file.
+
+Example system property:
+
+```
+-Dlocalfile_1=".*Registry.dat:MyRegistry.dat:text/plain"
+```
+
+The PATHREGEX source match is done against the original requested URL path (excluding a possible query string).
+
+This override was a feature request by Bogdan. He provided me with an example for adding a color profile:
+Creating a custom color scheme should work by adding these keys with your own values in the local Registry.dat file.
+Note: I have tried, but only have access to an Oracle 11 server. The custom color scheme does not seem to get picked up
+in there. But I tried altering the font size ```default.fontMap.defaultSize=900``` in the Registry file, and that
+change DOES get picked up fine in Oracle 11. So the color mapping probably will work on Oracle 12 only.
+
+```
+# Sample custom color scheme, put in a local file MyRegistry.dat
+# To set this sceme to be used, add: -Doverride_customcolorscheme=sample
+# or add customcolorscheme=sample as query string parameter to the server url to use.
+# And also add: -Dlocalfile_reg=".*Registry.dat:/your/path/to/MyRegistry.dat:text/plain"
+
+colorScheme.sample.description=Sample custom color scheme
+colorScheme.sample.lightest=0xFFA941
+colorScheme.sample.lighter=0xFFA15B
+colorScheme.sample.light=0xF07414
+colorScheme.sample.dark=0xFF4F59
+colorScheme.sample.darker=0x666666
+colorScheme.sample.darkest=0x000000
+colorScheme.sample.selection=0x5CC7E4
+colorScheme.sample.pinstripe1=0x518FEB
+colorScheme.sample.pinstripe2=0x2001AC
+```
+
+The Registry.dat file normally is read from this server url: /forms/registry/oracle/forms/registry/Registry.dat,
+so you should try reading that one, put it in a local MyRegistry.dat file, and add/alter its contents as specified above.
 
 ## Disclaimers
 

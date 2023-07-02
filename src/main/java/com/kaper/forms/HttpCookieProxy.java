@@ -10,6 +10,8 @@ import java.net.Socket;
 import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URL;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -29,6 +31,9 @@ import javax.net.ssl.SSLSocketFactory;
  * can function without this proxy, but the production system uses a load balancing setup. However, it is cleaner to use this proxy also for the single server
  * instances, as those do try to set balancing cookies as well, and without this proxy they keep generating new ones and send them on every response.
  * Note: ALL cookies are handled as if they are SESSION cookies. So we do not keep a persistent state across restarts.
+ * You can pass in a list of proxy overrides, to return local files when certain target paths are matched.
+ * Format for overrides: PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE, where PATHREGEX is a regex to match the original url path.
+ * Example: .*Registry.dat:MyRegistry.dat:text/plain
  */
 public class HttpCookieProxy {
     /** The main proxy thread. */
@@ -40,6 +45,9 @@ public class HttpCookieProxy {
     /** Our local cookie storage. Only access this via the putCookieInCookieJar and getAllCookiesFromCookieJar methods (for synchronization). */
     private final Map<String, String> cookieJarStorage = new HashMap<>();
 
+    /** List of files to serve from local filesystem, instead of proxying them. */
+    private final List<ProxyOverride> proxyOverrides = new ArrayList<>();
+
     /**
      * This "main" method is mainly for testing/debugging purposes. The proxy will be instantiated from the OracleFormsRunner class.
      * Does not need "manual" start.
@@ -49,14 +57,20 @@ public class HttpCookieProxy {
      * </pre>
      */
     public static void main(String[] args) throws IOException {
-        if ((args.length != 2 && args.length != 3) || (args.length == 3 && !args[2].equals("-v")) || (!args[1].matches("[0-9]+"))) {
-            Logger.logInfo("HttpCookieProxy::main; Pass on two or 3 arguments: 'http(s)://targethost/ <localport-number>' or 'http(s)://targethost/ <localport-number> -v'");
+        if (args.length < 2) {
+            Logger.logInfo(
+                    "HttpCookieProxy::main; Pass on two or more arguments: 'http(s)://targethost/ <localport-number>' or '-v http(s)://targethost/ <localport-number>', and add ant proxy file overrides after the port");
+            Logger.logInfo(
+                    "Format for overrides: PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE, where PATHREGEX is a regex to match the original url path. Example: '.*Registry.dat:MyRegistry.dat:text/plain'");
             return;
         }
-        Logger.setDebugEnabled(args.length == 3);
+        // Verbose logging?
+        boolean verbose = args.length > 2 && args[0].equalsIgnoreCase("-v");
+        Logger.setDebugEnabled(verbose);
+        List<String> localProxyFiles = Arrays.asList(args).subList((verbose ? 3 : 2), args.length);
 
-        // This starts a new thread with a running, and returns immediately.
-        HttpCookieProxy proxy = new HttpCookieProxy(args[0], Integer.parseInt(args[1]));
+        // This starts a new thread with a running proxy, and returns immediately.
+        HttpCookieProxy proxy = new HttpCookieProxy(args[verbose ? 1 : 0], Integer.parseInt(args[verbose ? 2 : 1]), localProxyFiles);
         proxy.waitForProxyThreadToStop();
     }
 
@@ -67,14 +81,29 @@ public class HttpCookieProxy {
      * @param localPort     local listening port, will only listen on 127.0.0.1 as we do not want it publicly open.
      * @throws IOException when either local port is already in use, or a silly (unparsable) targetBaseUrl is passed on.
      */
-    public HttpCookieProxy(String targetBaseUrl, int localPort) throws IOException {
+    public HttpCookieProxy(String targetBaseUrl, int localPort, List<String> localProxyFiles) throws IOException {
         URL url = new URL(targetBaseUrl);
         boolean isHttps = url.getProtocol().equalsIgnoreCase("https");
         int port = url.getPort();
         if (port == -1) {
             port = isHttps ? 443 : 80;
         }
+        parseProxyOverrideConfig(localProxyFiles);
         runServer(isHttps, url.getHost(), port, localPort);
+    }
+
+    /**
+     * Split proxy override values into objects.
+     * Input values look like: PATHREGEX:LOCALFILE:CONTENTTYPE (colon separated values).
+     *
+     * @param localProxyFiles list of overrides.
+     */
+    private void parseProxyOverrideConfig(List<String> localProxyFiles) {
+        localProxyFiles.stream()
+                .map(entry -> entry.split(":"))
+                .filter(parts -> parts.length >= 2 && parts.length <= 3)
+                .map(parts -> new ProxyOverride(parts[0], parts[1], parts.length > 2 ? parts[2] : null))
+                .forEach(proxyOverrides::add);
     }
 
     /**
@@ -108,7 +137,7 @@ public class HttpCookieProxy {
         Logger.logInfo("Starting cookie retaining proxy for " + (serverUsesSsl ? "https://" : "http://") + host + ":" + remoteport + "/ on local port " + localport);
         // Creating a ServerSocket to listen for connections with. Only listen on localhost, as we do not want to expose this to the outside.
         ServerSocket localServerSocket = new ServerSocket(localport, 0, InetAddress.getByName("127.0.0.1"));
-        // Set timeout to let accept() break out every so often, to check for our keepRunning state.
+        // Set timeout to let "accept()" break out every so often, to check for our keepRunning state.
         localServerSocket.setSoTimeout(1000);
 
         // Start the proxy in a new thread (as this is what we need from the caller).
@@ -119,9 +148,7 @@ public class HttpCookieProxy {
                     // wait for a connection on the local port
                     Socket client = localServerSocket.accept();
                     // handle the request in a new thread to allow us to do multiple at the same time
-                    Thread t = new Thread(() -> {
-                        handleRequest(client, serverUsesSsl, host, remoteport);
-                    });
+                    Thread t = new Thread(() -> handleRequest(client, serverUsesSsl, host, remoteport));
                     t.start();
                 } catch (SocketTimeoutException ste) {
                     // no worries, this is a planned timeout, just to allow us to check the keepRunning regularly
@@ -145,6 +172,21 @@ public class HttpCookieProxy {
         try {
             final InputStream streamFromClient = client.getInputStream();
             final OutputStream streamToClient = client.getOutputStream();
+
+            // Read request headers, and pre-process them to be passed on to the real server (request body NOT handled yet!)
+            List<String> lines = processRequestHeaders(client, host, remoteport, streamFromClient);
+
+            // Check if we do NOT want to proxy the request, but for one or more files return a local file instead...
+            // We can use this to override the Registry.dat oracle forms config file if needed.
+            if (handleProxyFileOverrides(streamToClient, lines)) {
+                try {
+                    client.close();
+                } catch (IOException e) {
+                    // ignore
+                }
+                return;
+            }
+
             // Connect to target server.
             try {
                 if (!serverUsesSsl) {
@@ -171,47 +213,22 @@ public class HttpCookieProxy {
             final InputStream streamFromServer = server.getInputStream();
             final OutputStream streamToServer = server.getOutputStream();
 
-            // a thread to read the client's requests and pass them
-            // to the server. A separate thread for asynchronous.
+            // Send data to server
             Thread t = new Thread(() -> {
                 Thread.currentThread().setName("Proxy-Thread-" + client.getPort() + "-B");
-                // get header lines
-                changeReadTimeout(client, 1000);
-                List<String> lines = new ArrayList<>(readHeaderLines(streamFromClient));
-
-                // remove http(s)://host:port/ from first line
-                fixRequestMethodLine(lines);
-
-                // replace host header with new value
-                removeHeaders(lines, "host");
-                lines.add("Host: " + host + ":" + remoteport);
-
-                // remove Connection: line
-                removeHeaders(lines, "connection");
-
-                // add close after single use command (we do not want connection re-use to keep this proxy simpler)
-                lines.add("Connection: close");
-
-                // find any "Cookie" lines, and store in cookie-jar
-                collectSetCookieHeaders(lines);
-
-                // remove Cookie: lines
-                removeHeaders(lines, "cookie");
-
-                // add cookies from our cookie storage
-                addCookieHeaders(lines);
 
                 // pass on the header block to the server
                 sendHeaderLines(streamToServer, lines, ">");
 
                 // send body (if any)
-                changeReadTimeout(client, 30000);
                 copyBodyStream(streamFromClient, streamToServer, ">");
 
                 try {
                     streamToServer.close();
                 } catch (IOException e) {
+                    Logger.logDebug("end send body: " + e.getMessage());
                 }
+                Logger.logDebug("send done");
             });
 
             // Start the client-to-server request thread running
@@ -243,8 +260,78 @@ public class HttpCookieProxy {
                 if (client != null)
                     client.close();
             } catch (IOException e) {
+                // ignore
             }
         }
+    }
+
+    /**
+     * Check proxyOverrides config for matching request. If found, return a local file, instead of proxying to server.
+     *
+     * @return TRUE if local file was returned (no server call needed), FALSE if the request should go to the server.
+     */
+    private boolean handleProxyFileOverrides(OutputStream streamToClient, List<String> lines) {
+        // Parse first line to get the target path.
+        String path = lines.get(0).replaceAll("^[^ ]+ ([^? ]+).*$", "$1");
+        Logger.logDebug("Path: " + path);
+
+        for (ProxyOverride proxyOverride : proxyOverrides) {
+            if (path.matches(proxyOverride.pathRegex)) {
+                Logger.logInfo("Request: " + lines.get(0) + ", matches: " + proxyOverride.pathRegex + ", returning local file (not proxied): " + proxyOverride.localFile);
+                String fileData;
+                try {
+                    fileData = new String(Files.readAllBytes(Paths.get(proxyOverride.localFile)));
+                } catch (IOException e) {
+                    Logger.logInfo("Error reading local file: " + e.getMessage() + " (working directory: " + System.getProperty("user.dir") + ") - request will be proxied");
+                    return false;
+                }
+                PrintWriter out = new PrintWriter(streamToClient);
+                out.print("HTTP/1.1 200 OK\r\nContent-Length: " + fileData.getBytes().length + "\r\n");
+                if (proxyOverride.contentType != null) {
+                    out.print("ContentType: " + proxyOverride.contentType + "\r\n");
+                }
+                out.print("\r\n" + fileData);
+                out.flush();
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Read request headers, and prepare some updates in them for proxying on to the server (e.g. handle cookies).
+     *
+     * @return list of headers to pass on to server.
+     */
+    private List<String> processRequestHeaders(Socket client, String host, int remoteport, InputStream streamFromClient) {
+        // get header lines
+        changeReadTimeout(client, 1000);
+        List<String> lines = new ArrayList<>(readHeaderLines(streamFromClient));
+
+        // remove http(s)://host:port/ from first line
+        fixRequestMethodLine(lines);
+
+        // replace host header with new value
+        removeHeaders(lines, "host");
+        lines.add("Host: " + host + ":" + remoteport);
+
+        // remove Connection: line
+        removeHeaders(lines, "connection");
+
+        // add close after single use command (we do not want connection re-use to keep this proxy simpler)
+        lines.add("Connection: close");
+
+        // find any "Cookie" lines, and store in cookie-jar
+        collectSetCookieHeaders(lines);
+
+        // remove Cookie: lines
+        removeHeaders(lines, "cookie");
+
+        // add cookies from our cookie storage
+        addCookieHeaders(lines);
+
+        changeReadTimeout(client, 30000);
+        return lines;
     }
 
     /**
@@ -263,7 +350,7 @@ public class HttpCookieProxy {
      * We do not close the stream, to allow a following stream copy loop to copy the message BODY.
      *
      * @param stream input
-     * @return array of header lines
+     * @return list of header lines
      */
     private List<String> readHeaderLines(InputStream stream) {
         int bytesRead;
@@ -378,7 +465,7 @@ public class HttpCookieProxy {
                     putCookieInCookieJar(key.trim(), value.trim());
                 } else {
                     // cookie: This can pass on ONE or MORE cookies in one go... Split on "; ".
-                    for(String part: headerValue.split("; ")) {
+                    for (String part : headerValue.split("; ")) {
                         String key = part.replaceFirst("=.*", "");
                         String value = part.substring(key.length() + 1);
                         Logger.logInfo("Update Cookie Jar: key:" + key + ", value:" + value);
