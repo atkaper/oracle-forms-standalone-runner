@@ -32,8 +32,8 @@ import javax.net.ssl.SSLSocketFactory;
  * instances, as those do try to set balancing cookies as well, and without this proxy they keep generating new ones and send them on every response.
  * Note: ALL cookies are handled as if they are SESSION cookies. So we do not keep a persistent state across restarts.
  * You can pass in a list of proxy overrides, to return local files when certain target paths are matched.
- * Format for overrides: PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE, where PATHREGEX is a regex to match the original url path.
- * Example: .*Registry.dat:MyRegistry.dat:text/plain
+ * Format for overrides: URLREGEX:LOCALFILE or URLREGEX:LOCALFILE:CONTENTTYPE, where URLREGEX is a regex to match the original url path+querystring.
+ * Example: .*Registry.dat.*:MyRegistry.dat:text/plain
  */
 public class HttpCookieProxy {
     /** The main proxy thread. */
@@ -61,7 +61,7 @@ public class HttpCookieProxy {
             Logger.logInfo(
                     "HttpCookieProxy::main; Pass on two or more arguments: 'http(s)://targethost/ <localport-number>' or '-v http(s)://targethost/ <localport-number>', and add ant proxy file overrides after the port");
             Logger.logInfo(
-                    "Format for overrides: PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE, where PATHREGEX is a regex to match the original url path. Example: '.*Registry.dat:MyRegistry.dat:text/plain'");
+                    "Format for overrides: URLREGEX:LOCALFILE or URLREGEX:LOCALFILE:CONTENTTYPE, where URLREGEX is a regex to match the original url path+querystring. Example: '.*Registry.dat.*:MyRegistry.dat:text/plain'");
             return;
         }
         // Verbose logging?
@@ -94,7 +94,7 @@ public class HttpCookieProxy {
 
     /**
      * Split proxy override values into objects.
-     * Input values look like: PATHREGEX:LOCALFILE:CONTENTTYPE (colon separated values).
+     * Input values look like: URLREGEX:LOCALFILE:CONTENTTYPE (colon separated values).
      *
      * @param localProxyFiles list of overrides.
      */
@@ -271,13 +271,13 @@ public class HttpCookieProxy {
      * @return TRUE if local file was returned (no server call needed), FALSE if the request should go to the server.
      */
     private boolean handleProxyFileOverrides(OutputStream streamToClient, List<String> lines) {
-        // Parse first line to get the target path.
-        String path = lines.get(0).replaceAll("^[^ ]+ ([^? ]+).*$", "$1");
-        Logger.logDebug("Path: " + path);
+        // Parse first line to get the target path AND query string.
+        String request = lines.get(0).replaceAll("^[^ ]+ ([^ ]+) .*$", "$1");
+        Logger.logDebug("Request: " + request);
 
         for (ProxyOverride proxyOverride : proxyOverrides) {
-            if (path.matches(proxyOverride.pathRegex)) {
-                Logger.logInfo("Request: " + lines.get(0) + ", matches: " + proxyOverride.pathRegex + ", returning local file (not proxied): " + proxyOverride.localFile);
+            if (request.matches(proxyOverride.requestRegex)) {
+                Logger.logInfo("Request: " + lines.get(0) + ", matches: " + proxyOverride.requestRegex + ", returning local file (not proxied): " + proxyOverride.localFile);
                 String fileData;
                 try {
                     fileData = new String(Files.readAllBytes(Paths.get(proxyOverride.localFile)));

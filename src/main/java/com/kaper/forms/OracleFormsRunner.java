@@ -52,11 +52,11 @@ import org.apache.commons.text.StringEscapeUtils;
  *
  * To activate this option, add one or more system properties like this: "-Dlocalfile_*=...",
  * where the * can be replaced by anything unique (numbers).
- * Value is in format:  PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE where PATHREGEX is a regex pattern to match
- * the original target path, and LOCALFILE is a local file path for the file to use, and the optional CONTENTTYPE is the
- * content-type to return for the file.
- * Example: -Dlocalfile_1=".*Registry.dat:MyRegistry.dat:text/plain"
- * The PATHREGEX source match is done against the original requested URL path (excluding a possible query string).
+ * Value is in format:  URLREGEX:LOCALFILE or URLREGEX:LOCALFILE:CONTENTTYPE where URLREGEX is a regex pattern to match
+ * the original target path+querystring, and LOCALFILE is a local file path for the file to use, and the optional
+ * CONTENTTYPE is the content-type to return for the file.
+ * Example: -Dlocalfile_1=".*Registry.dat.*:MyRegistry.dat:text/plain"
+ * The URLREGEX source match is done against the original requested URL path (excluding a possible query string).
  *
  * Thijs, July 2023.
  *
@@ -174,12 +174,10 @@ public class OracleFormsRunner {
         // Ok, this is an ugly hack, but no clue how to do this nicely.
         // Here we monitor every second if the Applet still has any components showing...
         // If not, then we assume the user wants to close the application.
-        while (viewer.mainFrame.isVisible()) {
+        while (viewer.mainFrame.isVisible() && (viewer.mainFrame.isValid() || viewer.theApplet.getComponentCount() > 0)) {
             Thread.sleep(1000);
-            if (viewer.theApplet.getComponentCount() == 0) {
-                break;
-            }
         }
+        Logger.logInfo("Viewer State: isVisible=" + viewer.mainFrame.isVisible() + ", isValid=" + viewer.mainFrame.isValid() + ", ComponentCount=" + viewer.theApplet.getComponentCount());
 
         // Terminate all running things
         viewer.mainFrame.setVisible(false);

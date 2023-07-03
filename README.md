@@ -186,17 +186,17 @@ other settings can be added if needed anyway.
 
 To activate this override option, add one or more system properties like this: "-Dlocalfile_*=...",
 where the * can be replaced by anything unique (numbers or texts).
-Value is in format:  PATHREGEX:LOCALFILE or PATHREGEX:LOCALFILE:CONTENTTYPE where PATHREGEX is a regex pattern to match
-the original target path, and LOCALFILE is a local file path for the file to use, and the optional CONTENTTYPE is the
+Value is in format:  URLREGEX:LOCALFILE or URLREGEX:LOCALFILE:CONTENTTYPE where URLREGEX is a regex pattern to match
+the original target path+querystring, and LOCALFILE is a local file path for the file to use, and the optional CONTENTTYPE is the
 content-type to return for the file.
 
 Example system property:
 
 ```
--Dlocalfile_1=".*Registry.dat:MyRegistry.dat:text/plain"
+-Dlocalfile_1=".*Registry.dat.*:MyRegistry.dat:text/plain"
 ```
 
-The PATHREGEX source match is done against the original requested URL path (excluding a possible query string).
+The URLREGEX source match is done against the original requested URL path+querystring.
 
 This override was a feature request by Bogdan. He provided me with an example for adding a color profile:
 Creating a custom color scheme should work by adding these keys with your own values in the local Registry.dat file.
@@ -208,7 +208,7 @@ change DOES get picked up fine in Oracle 11. So the color mapping probably will 
 # Sample custom color scheme, put in a local file MyRegistry.dat
 # To set this sceme to be used, add: -Doverride_customcolorscheme=sample
 # or add customcolorscheme=sample as query string parameter to the server url to use.
-# And also add: -Dlocalfile_reg=".*Registry.dat:/your/path/to/MyRegistry.dat:text/plain"
+# And also add: -Dlocalfile_reg=".*Registry.dat.*:/your/path/to/MyRegistry.dat:text/plain"
 
 colorScheme.sample.description=Sample custom color scheme
 colorScheme.sample.lightest=0xFFA941
